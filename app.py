@@ -1,10 +1,10 @@
 from app import app
 from dotenv import dotenv_values
-from app.route.sign import signBp
+from app.route import v1
 
 config = dotenv_values(".env")
 
-app.register_blueprint(signBp, url_prefix='/v1/sign')
+app.register_blueprint(v1)
 
 if __name__ == '__main__':
     # Running app in debug mode
