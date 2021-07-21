@@ -8,4 +8,4 @@ app = Flask(__name__)
 
 app.wsgi_app = JWTMiddleware(app.wsgi_app)
 
-from app.route import sign
+from app.route import main

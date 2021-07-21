@@ -4,7 +4,7 @@ def main_route():
     message = {
         'apiVersion': 'v1.0',
         'status': 200,
-        'message': 'Welcome to the Sign Flask API'
+        'message': 'Welcome to the Sign Flask API / sign'
     }
     # Returning the object
     return message
