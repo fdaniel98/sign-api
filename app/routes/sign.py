@@ -7,5 +7,6 @@ signBp = Blueprint('sign', __name__, url_prefix='/sign')
 
 @signBp.get("/")
 def main_route():
-    res = signService.main_route();
+    res = signService.get_all();
     return jsonify(res);
+

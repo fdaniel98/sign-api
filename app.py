@@ -1,6 +1,6 @@
 from app import app
 from dotenv import dotenv_values
-from app.route import v1
+from app.routes import v1
 
 config = dotenv_values(".env")
 

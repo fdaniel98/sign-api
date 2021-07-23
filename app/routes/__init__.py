@@ -1,5 +1,5 @@
 from flask import Blueprint
-from app.route.sign import signBp
+from app.routes.sign import signBp
 
 
 v1 = Blueprint('v1', __name__, url_prefix='/v1')

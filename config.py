@@ -2,10 +2,12 @@
 
 from os.path import join, dirname
 from pymongo import MongoClient
-from dotenv import load_dotenv
-dotenv_path = join(dirname(__file__), '.env')  # Path to .env file
-load_dotenv(dotenv_path)
+from dotenv import dotenv_values
 
-DATABASE = MongoClient()['restfulapi'] # DB_NAME
-DEBUG = True
-client = MongoClient('localhost', 27017)
+config = dotenv_values(".env")
+
+DEBUG = config['DEBUG']
+URL = config['MONGO_DB']
+
+MongoClient = MongoClient(URL)
+SignsDatabase = MongoClient.dsignature.signs
