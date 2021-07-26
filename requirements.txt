@@ -7,3 +7,4 @@ python-dotenv==0.18.0
 dnspython==2.1.0
 pydantic==1.8.2
 fastapi
+cryptography

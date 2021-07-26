@@ -11,3 +11,4 @@ URL = config['MONGO_DB']
 
 MongoClient = MongoClient(URL)
 SignsDatabase = MongoClient.dsignature.signs
+CertsDatabase = MongoClient.dsignature.certs
