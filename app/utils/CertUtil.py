@@ -1,6 +1,7 @@
 import datetime
 import os
 import uuid
+from urllib import request
 
 from OpenSSL import crypto
 from cryptography import x509
@@ -9,6 +10,7 @@ from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509.oid import NameOID
+from flask import request
 
 (
     ca, ca_key,
@@ -89,17 +91,17 @@ class CertUtil(object):
         ).not_valid_after(
             datetime.datetime.utcnow() + datetime.timedelta(days=365)
         ).add_extension(
-            extension=x509.KeyUsage(
+            extval=x509.KeyUsage(
                 digital_signature=True, key_encipherment=True, content_commitment=True,
                 data_encipherment=False, key_agreement=False, encipher_only=False, decipher_only=False,
                 key_cert_sign=False, crl_sign=False
             ),
             critical=True
         ).add_extension(
-            extension=x509.BasicConstraints(ca=False, path_length=None),
+            extval=x509.BasicConstraints(ca=False, path_length=None),
             critical=True
         ).add_extension(
-            extension=x509.AuthorityKeyIdentifier.from_issuer_public_key(self.ca_pk.public_key()),
+            extval=x509.AuthorityKeyIdentifier.from_issuer_public_key(self.ca_pk.public_key()),
             critical=False
         ).sign(
             private_key=self.ca_pk,
@@ -152,36 +154,33 @@ class CertUtil(object):
             key, hashes.SHA256(), default_backend()
         )
 
-    def create_certificate_authority(self, csr_info):
-        if not os.path.exists(ca) or not os.path.exists(ca_key):
-            print('CA certificate not found, generating it')
-            ca_pk = self.key_create()
-            ca_cert = self.ca_create(ca_pk, csr_info)
-
-            self.key_save(ca_key, ca_pk, '1234')
-            self.pem_save(ca, ca_cert)
-        else:
-            print('CA certificate found, using it')
-            ca_pk = self.key_load(ca_key, '1234')
-            ca_cert = self.cert_load(ca)
-
+    def load_certificate_authority(self):
+        print('CA certificate found, using it')
+        ca_pk = self.key_load(ca_key, '1234')
+        ca_cert = self.cert_load(ca)
         self.ca_cert = ca_cert
         self.ca_pk = ca_pk
 
-    def create_pk12(self, cert, cert_key, cert_pub, cert_p12, csr_info):
-        if not os.path.exists(cert) or not os.path.exists(cert_key) or not os.path.exists(
-                cert_pub) or not os.path.exists(cert_p12):
-            client_pk = self.key_create()
-            client_csr = self.csr_create(csr_info, client_pk)
-            client_cert = self.csr_sign(client_csr)
-            client_p12 = self.pk12_create(csr_info['name'], client_cert, client_pk)
+    def create_certificate_authority(self, csr_info):
+        print('CA... generating it')
+        filename = int(datetime.datetime.utcnow().timestamp())
+        ca_pk = self.key_create()
+        ca_cert = self.ca_create(ca_pk, csr_info)
+        self.key_save("{}.key.pem".format(filename), ca_pk, csr_info['password'])
+        self.key_save("{}.pub.pem".format(filename), ca_pk, None)
+        self.pem_save("{}.crt.pem".format(filename), ca_cert)
+        self.ca_cert = ca_cert
+        self.ca_pk = ca_pk
+        self.filename = filename
 
-            self.pem_save(cert, client_cert)
-            self.key_save(cert_key, client_pk, csr_info['password'])
-            self.key_save(cert_pub, client_pk, None)
-            self.pk12_save(cert_p12, client_p12, csr_info['password'])
+    def create_pk12(self, csr_info):
+        client_pk = self.ca_pk
+        client_csr = self.csr_create(csr_info, client_pk)
+        client_cert = self.csr_sign(client_csr)
+        client_p12 = self.pk12_create(csr_info['name'].encode(), client_cert, client_pk)
+        self.pk12_save("{}.p12".format(self.filename), client_p12, csr_info['password'])
 
-            # os.chmod(pkcs12 % user, stat.S_IRUSR | stat.S_IWUSR)  # 0o600 perms
+
 
     def USERs(self):
         self.USER(1, cert1, cert1_key, cert1_pub, cert1_p12)

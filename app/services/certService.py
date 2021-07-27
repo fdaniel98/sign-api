@@ -24,5 +24,5 @@ def create_cert():
     params = request.get_json()
     cls = CertUtil()
     cls.create_certificate_authority(params)
-    cls.create_pk12()
+    cls.create_pk12(params)
     return response([], None)

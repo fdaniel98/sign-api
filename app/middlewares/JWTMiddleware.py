@@ -1,6 +1,5 @@
 from werkzeug.wrappers import Request, Response
 from dotenv import dotenv_values
-
 from app.utils.JWToken import verify_token
 
 
@@ -9,8 +8,9 @@ class JWTMiddleware:
     Simple WSGI middlewares
     '''
 
-    def __init__(self, app):
+    def __init__(self, app, cache):
         self.app = app
+        self.cache = cache
         self.config = config = dotenv_values(".env")
 
     def __call__(self, environ, start_response):
@@ -25,7 +25,9 @@ class JWTMiddleware:
         token = auth_header.replace('Bearer ', '')
 
         # verify the token
-        if verify_token(token, secret):
+        data = verify_token(token, secret)
+        if data:
+            self.cache.set(token, data)
             return self.app(environ, start_response)
 
         res = Response(u'Authorization failed', mimetype='text/plain', status=401)

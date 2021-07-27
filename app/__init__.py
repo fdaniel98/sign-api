@@ -1,14 +1,31 @@
 """This is init module."""
 
 from flask import Flask, jsonify
+from flask_caching import Cache
+
 from app.middlewares.JWTMiddleware import JWTMiddleware
+from dotenv import dotenv_values
+
+config = dotenv_values(".env")
+
+CONFIG_CACHE = {
+    "DEBUG": config['DEBUG'],          # some Flask specific configs
+    "CACHE_TYPE": "RedisCache",  # Flask-Caching related configs
+    "CACHE_DEFAULT_TIMEOUT": config['REDIS_TIMEOUT'],
+    "CACHE_REDIS_HOST": config['REDIS_HOST']
+}
+
 
 # Place where app is defined
 from app.utils.response import response
 
 app = Flask(__name__)
+cache = Cache(app, config=CONFIG_CACHE)
+app.config.from_mapping(config)
+app.cache = cache
 
-app.wsgi_app = JWTMiddleware(app.wsgi_app)
+
+app.wsgi_app = JWTMiddleware(app.wsgi_app, cache)
 
 from app.routes import main
 

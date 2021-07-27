@@ -3,7 +3,6 @@ from dotenv import dotenv_values
 from app.routes import v1
 
 config = dotenv_values(".env")
-
 app.register_blueprint(v1)
 
 if __name__ == '__main__':
