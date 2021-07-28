@@ -1,7 +1,5 @@
 import datetime
-import os
 import uuid
-from urllib import request
 
 from OpenSSL import crypto
 from cryptography import x509
@@ -10,67 +8,85 @@ from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509.oid import NameOID
-from flask import request
+from dotenv import dotenv_values
 
-(
-    ca, ca_key,
-    cert1, cert1_key, cert1_pub, cert1_p12,
-    cert2, cert2_key, cert2_pub, cert2_p12
-) = (
-    'demo2_ca.crt.pem', 'demo2_ca.key.pem',
-    'demo2_user1.crt.pem', 'demo2_user1.key.pem', 'demo2_user1.pub.pem', 'demo2_user1.p12',
-    'demo2_user2.crt.pem', 'demo2_user2.key.pem', 'demo2_user2.pub.pem', 'demo2_user2.p12'
-)
+from app.models.Cert import Cert
+from app.utils.AWService import upload_to_s3
+from app.utils.JWToken import get_user
+
+config = dotenv_values(".env")
 
 
 class CertUtil(object):
-    def key_create(self):
+    def __init__(self):
+        self.pem_path = config['PEM_KEY']
+        self.p12_path = config['P12_PATH']
+        self.aws_p12_path = None
+        self.aws_key = None
+        self.aws_crt = None
+        self.aws_pub = None
+        self.password_encode = 'utf-8'
+        self.user = get_user();
+        self.ca_cert = None
+        self.ca_pk = None
+        self.filename = None
+
+    @staticmethod
+    def key_create():
         return rsa.generate_private_key(
             public_exponent=65537,
             key_size=2048,
             backend=default_backend()
         )
 
-    def key_save(self, fname, key, password):
-        # Write our key to disk for safe keeping
-        with open(fname, "wb") as f:
-            if not password:
-                f.write(key.public_key().public_bytes(
-                    encoding=serialization.Encoding.PEM,
-                    format=serialization.PublicFormat.SubjectPublicKeyInfo
-                ))
-            else:
-                f.write(key.private_bytes(
-                    encoding=serialization.Encoding.PEM,
-                    format=serialization.PrivateFormat.TraditionalOpenSSL,
-                    encryption_algorithm=serialization.BestAvailableEncryption(password.encode('utf-8')),
-                ))
+    def key_save(self, filename, key, password):
+        path = self.pem_path.format(self.user['id'], filename)
+        # get our key to a var for later safe
+        if not password:
+            data = key.public_key().public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo
+            )
+        else:
+            data = key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.BestAvailableEncryption(password.encode('utf-8')),
+            )
+        return upload_to_s3(data, path)
 
-    def key_load(self, fname, password):
-        with open(fname, "rb") as f:
-            private_key = serialization.load_pem_private_key(f.read(), password.encode('utf-8'), default_backend())
+    def key_load(self,filename, password):
+        with open(filename, "rb") as f:
+            private_key = serialization.load_pem_private_key(
+                f.read(),
+                password.encode(self.password_encode),
+                default_backend())
             return private_key
 
-    def cert_load(self, fname):
-        with open(fname, "rb") as f:
+    @staticmethod
+    def cert_load(filename):
+        with open(filename, "rb") as f:
             return x509.load_pem_x509_certificate(f.read(), default_backend())
 
-    def pem_save(self, fname, data):
-        with open(fname, "wb") as f:
-            f.write(data.public_bytes(serialization.Encoding.PEM))
+    def pem_save(self, filename, data):
+        path = self.pem_path.format(self.user['id'], filename)
+        public_data = data.public_bytes(serialization.Encoding.PEM)
+        return upload_to_s3(public_data, path)
 
-    def csr_load(self, fname):
-        with open(fname, 'rb') as f:
+    @staticmethod
+    def csr_load(filename):
+        with open(filename, 'rb') as f:
             return x509.load_pem_x509_csr(data=f.read(), backend=default_backend())
 
-    def csr_create(self, csr_info, key):
+    @staticmethod
+    def csr_create(csr_info, key):
         return x509.CertificateSigningRequestBuilder().subject_name(
             x509.Name([
                 x509.NameAttribute(NameOID.COMMON_NAME, csr_info['name']),
                 x509.NameAttribute(NameOID.COUNTRY_NAME, csr_info['country']),
                 x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, csr_info['state']),
                 x509.NameAttribute(NameOID.LOCALITY_NAME, csr_info['city']),
-                x509.NameAttribute(NameOID.ORGANIZATION_NAME,csr_info['company']),
+                x509.NameAttribute(NameOID.ORGANIZATION_NAME, csr_info['company']),
             ])
         ).sign(
             # Sign the CSR with our private key.
@@ -110,22 +126,23 @@ class CertUtil(object):
         )
 
     def pk12_create(self, name, cert, key):
-        pkcs12 = crypto.PKCS12()
-        pkcs12.set_certificate(crypto.X509.from_cryptography(cert))
-        pkcs12.set_privatekey(crypto.PKey.from_cryptography_key(key))
-        pkcs12.set_ca_certificates((crypto.X509.from_cryptography(self.ca_cert),))
-        pkcs12.set_friendlyname(name)
-        return pkcs12
+        pk12 = crypto.PKCS12()
+        pk12.set_certificate(crypto.X509.from_cryptography(cert))
+        pk12.set_privatekey(crypto.PKey.from_cryptography_key(key))
+        pk12.set_ca_certificates((crypto.X509.from_cryptography(self.ca_cert),))
+        pk12.set_friendlyname(name)
+        return pk12
 
-    def pk12_save(self, fname, p12, password):
-        with open(fname, 'wb') as f:
-            f.write(p12.export(password.encode('utf-8')))
+    def pk12_save(self, filename, p12, password):
+        path = self.p12_path.format(self.user['id'], filename)
+        return upload_to_s3(p12.export(password.encode(self.password_encode)), path)
 
-    def pk12_load(self, fname, password):
-        with open(fname, 'rb') as fp:
-            return pkcs12.load_key_and_certificates(fp.read(), password.encode('utf-8'), default_backend())
+    def pk12_load(self, filename, password):
+        with open(filename, 'rb') as fp:
+            return pkcs12.load_key_and_certificates(fp.read(), password.encode(self.password_encode), default_backend())
 
-    def ca_create(self, key, csr_info):
+    @staticmethod
+    def ca_create(key, csr_info):
         subject = issuer = x509.Name([
             x509.NameAttribute(NameOID.COMMON_NAME, csr_info['name']),
             x509.NameAttribute(NameOID.COUNTRY_NAME, csr_info['country']),
@@ -144,8 +161,8 @@ class CertUtil(object):
         ).not_valid_before(
             datetime.datetime.utcnow()
         ).not_valid_after(
-            # Our certificate will be valid for 10 years
-            datetime.datetime.utcnow() + datetime.timedelta(days=10 * 365)
+            # Our certificate will be valid for given years
+            datetime.datetime.utcnow() + datetime.timedelta(days=csr_info['year'] * 365)
         ).add_extension(
             extval=x509.BasicConstraints(ca=True, path_length=None),
             critical=True
@@ -154,9 +171,11 @@ class CertUtil(object):
             key, hashes.SHA256(), default_backend()
         )
 
-    def load_certificate_authority(self):
+    def load_certificate_authority(self, password, ca_key, ca):
         print('CA certificate found, using it')
-        ca_pk = self.key_load(ca_key, '1234')
+        # .key.pem file
+        ca_pk = self.key_load(ca_key, password)
+        # .crt.pem file
         ca_cert = self.cert_load(ca)
         self.ca_cert = ca_cert
         self.ca_pk = ca_pk
@@ -166,9 +185,23 @@ class CertUtil(object):
         filename = int(datetime.datetime.utcnow().timestamp())
         ca_pk = self.key_create()
         ca_cert = self.ca_create(ca_pk, csr_info)
-        self.key_save("{}.key.pem".format(filename), ca_pk, csr_info['password'])
-        self.key_save("{}.pub.pem".format(filename), ca_pk, None)
-        self.pem_save("{}.crt.pem".format(filename), ca_cert)
+        key_res = self.key_save("{}.key.pem".format(filename), ca_pk, csr_info['password'])
+        pub_res = self.key_save("{}.pub.pem".format(filename), ca_pk, None)
+        crt_res = self.pem_save("{}.crt.pem".format(filename), ca_cert)
+
+        self.aws_crt = {
+            'bucket': crt_res.bucket_name,
+            'path': crt_res.key
+        }
+        self.aws_key = {
+            'bucket': key_res.bucket_name,
+            'path': key_res.key
+        }
+        self.aws_pub = {
+            'bucket': pub_res.bucket_name,
+            'path': pub_res.key
+        }
+
         self.ca_cert = ca_cert
         self.ca_pk = ca_pk
         self.filename = filename
@@ -178,16 +211,22 @@ class CertUtil(object):
         client_csr = self.csr_create(csr_info, client_pk)
         client_cert = self.csr_sign(client_csr)
         client_p12 = self.pk12_create(csr_info['name'].encode(), client_cert, client_pk)
-        self.pk12_save("{}.p12".format(self.filename), client_p12, csr_info['password'])
+        p12_res = self.pk12_save("{}.p12".format(self.filename), client_p12, csr_info['password'])
 
+        cert = {
+            'extension': '.p12',
+            'filename': self.filename,
+            'path': p12_res.key,
+            'pub': self.aws_pub,
+            'key': self.aws_key,
+            'crt': self.aws_crt,
+            'provider': config['PROVIDER'],
+            'created_at': datetime.datetime.utcnow().timestamp()
+        }
 
+        return cert
 
-    def USERs(self):
-        self.USER(1, cert1, cert1_key, cert1_pub, cert1_p12)
-        self.USER(2, cert2, cert2_key, cert2_pub, cert2_p12)
-
-
-#print('Generating certificates')
-#cls = CertUtil()
-#cls.CA()
-#cls.USERs()
+# print('Generating certificates')
+# cls = CertUtil()
+# cls.CA()
+# cls.USERs()

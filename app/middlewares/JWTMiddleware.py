@@ -11,7 +11,7 @@ class JWTMiddleware:
     def __init__(self, app, cache):
         self.app = app
         self.cache = cache
-        self.config = config = dotenv_values(".env")
+        self.config = dotenv_values(".env")
 
     def __call__(self, environ, start_response):
         request = Request(environ)

@@ -30,3 +30,4 @@ def gen_links(page, count, per_page, route):
         }
 
     return value
+

@@ -20,9 +20,15 @@ def get_all():
 
     return response(certs, links)
 
+
 def create_cert():
     params = request.get_json()
     cls = CertUtil()
     cls.create_certificate_authority(params)
-    cls.create_pk12(params)
-    return response([], None)
+    unsaved_cert = cls.create_pk12(params)
+    valid_cert = Cert(**unsaved_cert).to_json()
+    cert_saved = CertsDatabase.insert_one(valid_cert)
+    return response({
+        'id': str(cert_saved.inserted_id),
+        'success': True
+    }, None)
