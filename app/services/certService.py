@@ -30,5 +30,4 @@ def create_cert():
     cert_saved = CertsDatabase.insert_one(valid_cert)
     return response({
         'id': str(cert_saved.inserted_id),
-        'success': True
     }, None)

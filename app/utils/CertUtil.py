@@ -221,6 +221,7 @@ class CertUtil(object):
             'key': self.aws_key,
             'crt': self.aws_crt,
             'provider': config['PROVIDER'],
+            'bucket': config['AWS_BUCKET'],
             'created_at': datetime.datetime.utcnow().timestamp()
         }
 

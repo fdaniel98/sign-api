@@ -1,7 +1,7 @@
 from flask import url_for
 
 
-def response(data, incoming_links, code=200):
+def response(data, incoming_links = None, code=200):
     return {
         'data': data,
         'links': incoming_links,

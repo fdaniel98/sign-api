@@ -6,8 +6,10 @@ Werkzeug==2.0.1
 python-dotenv==0.18.0
 dnspython==2.1.0
 pydantic==1.8.2
-fastapi
-cryptography
+fastapi~=0.67.0
+cryptography~=3.4.7
 Flask-Caching==1.10.1
 redis
 boto3<=1.15.3
+flask-inputs
+WTForms~=2.3.3

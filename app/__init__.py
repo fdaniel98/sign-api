@@ -3,7 +3,6 @@
 from flask import Flask, jsonify
 from flask_caching import Cache
 
-from app.middlewares.JWTMiddleware import JWTMiddleware
 from dotenv import dotenv_values
 
 config = dotenv_values(".env")
@@ -25,7 +24,7 @@ app.config.from_mapping(config)
 app.cache = cache
 
 
-app.wsgi_app = JWTMiddleware(app.wsgi_app, cache)
+#app.wsgi_app = JWTMiddleware(app.wsgi_app, cache)
 
 from app.routes import main
 

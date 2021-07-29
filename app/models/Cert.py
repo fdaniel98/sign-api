@@ -34,4 +34,5 @@ class Cert(BaseModel, Model):
     key: Key
     crt: Crt
     provider: str
+    bucket: str
     created_at: datetime
