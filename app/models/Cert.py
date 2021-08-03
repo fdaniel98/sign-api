@@ -29,6 +29,7 @@ class Cert(BaseModel, Model):
     id: Optional[PydanticObjectId] = Field(None, alias="_id")
     extension: str
     filename: str
+    has_password: bool
     path: str
     pub: Pub
     key: Key

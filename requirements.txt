@@ -13,3 +13,4 @@ redis
 boto3<=1.15.3
 flask-inputs
 WTForms~=2.3.3
+pdfrw==0.4

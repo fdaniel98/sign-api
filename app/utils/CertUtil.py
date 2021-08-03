@@ -216,6 +216,7 @@ class CertUtil(object):
         cert = {
             'extension': '.p12',
             'filename': self.filename,
+            'has_password': True if 'password' in csr_info else False,
             'path': p12_res.key,
             'pub': self.aws_pub,
             'key': self.aws_key,

@@ -1,7 +1,8 @@
-from flask import request
-from flask_inputs import Inputs
-from wtforms.validators import DataRequired
+import os
 
+from flask import request, send_file
+
+from app import app
 from app.services import signService
 from flask import jsonify, Blueprint
 
@@ -30,7 +31,11 @@ def store_route():
     data = request.form
     file = request.files['file'] if 'file' in request.files else None
 
-    res = signService.make_sign(data, file)
+    path = signService.make_sign(data, file)
+    full_path = os.path.join(os.path.dirname(app.instance_path), path)
 
-    return jsonify(res)
+    return send_file(path_or_file=full_path,
+                     mimetype=file.mimetype,
+                     attachment_filename='test.pdf',
+                     as_attachment=True)
 

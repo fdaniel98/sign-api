@@ -1,3 +1,5 @@
+import os
+
 from flask import request, jsonify
 
 from app import app
@@ -7,6 +9,12 @@ from app.validations.validations import ApiTokenValidation
 
 config = dotenv_values(".env")
 app.register_blueprint(v1)
+
+
+def prepare_app():
+    path = config['SIGNED_TMP_PATH']
+    if not os.path.isdir(path):
+        os.mkdir(path)
 
 
 @app.before_request
@@ -19,4 +27,5 @@ def before():
 
 if __name__ == '__main__':
     # Running app in debug mode
+    prepare_app()
     app.run(debug=bool(config['DEBUG']))
