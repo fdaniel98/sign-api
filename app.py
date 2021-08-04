@@ -28,4 +28,4 @@ def before():
 if __name__ == '__main__':
     # Running app in debug mode
     prepare_app()
-    app.run(debug=bool(config['DEBUG']))
+    app.run(debug=False)

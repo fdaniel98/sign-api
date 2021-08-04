@@ -1,5 +1,4 @@
 import datetime
-import os
 
 from bson.objectid import ObjectId
 from cryptography.hazmat import backends
@@ -10,6 +9,7 @@ from werkzeug.datastructures import FileStorage
 from app.models.Cert import Cert
 from app.models.Sign import Sign
 from app.utils.AWService import read_file_from_s3
+from app.utils.JWToken import get_user
 from app.utils.response import response, gen_links
 from config import SignsDatabase, CertsDatabase, config
 
@@ -35,19 +35,19 @@ def make_sign(data: dict, file: FileStorage) -> str:
         "aligned": 0,
         "sigflags": 3,
         "sigflagsft": 132,
-        "sigpage": 0,
+        "sigpage": data['signature_page'],
         "sigbutton": True,
-        "sigfield": "Signature1",
+        "sigfield": data['signature_name'],
         "auto_sigfield": True,
         "sigandcertify": True,
-        "signaturebox": (470, 840, 570, 640),
-        "signature": "TEST - SIGN",
-        #        "signature_img": "signature_test.png",
+        "signaturebox": data['dimension_box'],
+        "signature": data['text_sign'],
+        "signature_img": data['signature_img'],
         'contact': data['contact'],
         'location': data['location'],
         "signingdate": date,
         'reason': data['reason'],
-        "password": "1234",
+        "password": data['password'] if 'password' in data else '',
     }
 
     cursor = CertsDatabase.find_one({'_id': ObjectId(data['cert'])})
@@ -59,9 +59,18 @@ def make_sign(data: dict, file: FileStorage) -> str:
     sign_data = cms.sign(read_data, dct, p12[0], p12[1], p12[2], "sha256")
 
     path = '{}\\signed-{}'.format(config['SIGNED_TMP_PATH'], file.filename)
+    user = get_user();
+    now = datetime.datetime.utcnow()
 
     with open(path, "wb") as fp:
         fp.write(read_data)
         fp.write(sign_data)
+
+    SignsDatabase.insert_one({
+        'cert': cert,
+        'user': user,
+        'date_added': now,
+        'date_updated': now
+    })
 
     return path

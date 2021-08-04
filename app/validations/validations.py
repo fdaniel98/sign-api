@@ -14,6 +14,7 @@ class SignInputs(Inputs):
     form = {
         'cert': [DataRequired(message='Cert is required')],
         'reason': [DataRequired(message='reason is required')],
+        'text_sign': [DataRequired(message='text_sign is required')],
         'location': [DataRequired(message='location is required')],
         'contact': [DataRequired(message='contact is required')]
     }

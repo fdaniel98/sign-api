@@ -10,7 +10,6 @@ from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509.oid import NameOID
 from dotenv import dotenv_values
 
-from app.models.Cert import Cert
 from app.utils.AWService import upload_to_s3
 from app.utils.JWToken import get_user
 

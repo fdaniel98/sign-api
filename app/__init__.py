@@ -23,9 +23,6 @@ cache = Cache(app, config=CONFIG_CACHE)
 app.config.from_mapping(config)
 app.cache = cache
 
-
-#app.wsgi_app = JWTMiddleware(app.wsgi_app, cache)
-
 from app.routes import main
 
 
@@ -37,4 +34,9 @@ def resource_not_found(e):
 @app.errorhandler(500)
 def resource_server_error(e):
     return jsonify(response(str(e), None, 500)), 500
+
+
+@app.errorhandler
+def resource_server_error(e):
+    return jsonify(response(str(e), None, 400)), 400
 

@@ -6,10 +6,12 @@ from app import app
 from app.services import signService
 from flask import jsonify, Blueprint
 
+from app.utils.SignUtil import SignUtil
 from app.validations.validations import SignInputs
 from config import config
 
 signBp = Blueprint('sign', __name__, url_prefix='/sign')
+
 
 @signBp.get("/")
 def main_route():
@@ -28,14 +30,15 @@ def store_route():
     if not inputs.validate():
         return jsonify(success=False, errors=inputs.errors)
 
-    data = request.form
+    util = SignUtil(request.form)
     file = request.files['file'] if 'file' in request.files else None
 
+    data = util.get_sign_data()
     path = signService.make_sign(data, file)
     full_path = os.path.join(os.path.dirname(app.instance_path), path)
 
     return send_file(path_or_file=full_path,
                      mimetype=file.mimetype,
-                     attachment_filename='test.pdf',
+                     attachment_filename="signed-{}".format(file.filename),
                      as_attachment=True)
 

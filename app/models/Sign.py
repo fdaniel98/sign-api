@@ -11,7 +11,7 @@ from app.models.base.Model import Model
 
 class Sign(BaseModel, Model):
     id: Optional[PydanticObjectId] = Field(None, alias="_id")
-    url: str
+    url: Optional[str]
     cert: Optional[Cert]
     user: Optional[User]
     date_added: Optional[datetime]
